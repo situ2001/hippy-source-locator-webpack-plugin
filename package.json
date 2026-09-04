@@ -1,6 +1,6 @@
 {
   "name": "hippy-source-locator-webpack-plugin",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Locate Hippy React component source from DevTools selections",
   "main": "./dist/index.cjs",
   "types": "./dist/index.d.ts",
