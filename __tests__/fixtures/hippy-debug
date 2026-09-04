@@ -1,0 +1,10 @@
+const assert = require('assert');
+const path = require('path');
+
+const entry = require.resolve('@hippy/debug-server-next', { paths: [process.cwd()] });
+const middlewareRoot = path.join(path.dirname(entry), 'middlewares');
+const manager = require(path.join(middlewareRoot, 'android')).androidMiddleWareManager;
+const middleware = manager.upwardMiddleWareListMap['DOM.setInspectedNode'];
+const middlewareList = Array.isArray(middleware) ? middleware : [middleware];
+
+assert(middlewareList.some(item => item && item.name === 'inspectSelectedNode'));

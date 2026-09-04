@@ -1,0 +1,10 @@
+node_modules/
+!__tests__/fixtures/debug-project/node_modules/
+!__tests__/fixtures/debug-project/node_modules/@hippy/
+!__tests__/fixtures/debug-project/node_modules/@hippy/debug-server-next/
+!__tests__/fixtures/debug-project/node_modules/@hippy/debug-server-next/**
+dist/
+coverage/
+*.log
+.DS_Store
+tmp-docs/
