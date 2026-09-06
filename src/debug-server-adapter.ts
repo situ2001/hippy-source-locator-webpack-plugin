@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { createInspectorExpression } from './inspector-expression';
 
 export const INSPECTED_NODE_METHOD = 'DOM.setInspectedNode';
 export const RUNTIME_EVALUATE_METHOD = 'Runtime.evaluate';
@@ -37,20 +38,6 @@ export interface InstallDebugServerResult { installed: boolean; packageName: str
 export const DEBUG_SERVER_ADAPTERS: DebugServerAdapter[] = [
   { packageName: '@hippy/debug-server-next', middlewareRoot: 'middlewares' },
 ];
-
-export function createInspectorExpression(nodeId: number): string {
-  return '(function(){var api=typeof global!==\'undefined\'&&global.__HIPPY_DEVTOOLS__;'
-    + 'if(!api||typeof api.inspectNode!==\'function\'){return null;}'
-    + `var data=api.inspectNode(${JSON.stringify(nodeId)});`
-    + 'if(!data){return null;}'
-    + 'var label=data.componentName||data.nativeName||\'Unknown component\';'
-    + 'if(data.nativeName&&data.nativeName!==label){label+=\' <\'+data.nativeName+\'>\';}'
-    + 'var source=data.source;'
-    + 'if(!source){return label+\' — source unavailable\';}'
-    + 'var location=source.fileName+\':\'+source.lineNumber;'
-    + 'if(typeof source.columnNumber===\'number\'){location+=\':\'+source.columnNumber;}'
-    + 'return label+\' — \'+location;}())';
-}
 
 function getEvaluationValue(response: unknown): unknown {
   return (response as RuntimeEvaluateResponse | null)?.result?.result?.value;

@@ -1,11 +1,11 @@
 import vm from 'node:vm';
 import * as debugServerAdapter from '../src/debug-server-adapter';
 import type { MiddlewareManager } from '../src/debug-server-adapter';
+import { createInspectorExpression } from '../src/inspector-expression';
 import test from './helpers/test';
 
 const {
   INSPECTED_NODE_METHOD,
-  createInspectorExpression,
   createSelectionMiddleware,
   installDebugServerMiddleware,
   prependMiddleware,
@@ -28,7 +28,7 @@ test('selection middleware evaluates the injected page runtime after selection',
   t.is(calls.length, 1);
   t.is(calls[0]!.method, 'Runtime.evaluate');
   t.true(calls[0]!.params.returnByValue);
-  t.true((calls[0]!.params.expression as string).includes('inspectNode(42)'));
+  t.true((calls[0]!.params.expression as string).endsWith('(42)'));
 });
 
 test('selection middleware logs the evaluated source location in the debug-server process', async (t) => {
@@ -123,7 +123,7 @@ test('installDebugServerMiddleware supports a loaded debug-server adapter', (t) 
 test('inspector expression serializes the node id', (t) => {
   const expression = createInspectorExpression(7);
   t.true(expression.includes('__HIPPY_DEVTOOLS__'));
-  t.true(expression.includes('inspectNode(7)'));
+  t.true(expression.endsWith('(7)'));
 });
 
 test('inspector expression returns the component and source location', (t) => {

@@ -3,10 +3,8 @@ import type { Compiler } from 'webpack';
 const PLUGIN_NAME = 'HippySourceLocatorWebpackPlugin';
 const UI_MODULE_ALIAS = '__HIPPY_SOURCE_LOCATOR_UI_MODULE__';
 
-type BabelItem = string | [unknown, Record<string, unknown>?] | unknown;
 interface BabelOptions {
-  plugins?: BabelItem[];
-  presets?: BabelItem[];
+  plugins?: unknown[];
   [key: string]: unknown;
 }
 interface LoaderObject { loader?: unknown; options?: BabelOptions | string; [key: string]: unknown }
@@ -44,36 +42,15 @@ function isBabelLoader(loader: unknown): loader is string {
     && /(^|[/\\])babel-loader([/\\]|$)/.test(loader.split('?')[0] ?? '');
 }
 
-function isSamePlugin(plugin: BabelItem, sourcePlugin: string): boolean {
-  const pluginName = Array.isArray(plugin) ? plugin[0] : plugin;
-  if (pluginName === sourcePlugin || pluginName === '@babel/plugin-transform-react-jsx-source') return true;
-  return typeof pluginName === 'string'
-    && /[/\\]plugin-transform-react-jsx-source([/\\]|$)/.test(pluginName);
-}
-
-function assertCompatiblePreset(options: BabelOptions): void {
-  for (const preset of options.presets || []) {
-    const presetName = Array.isArray(preset) ? preset[0] : preset;
-    const presetOptions = Array.isArray(preset) ? preset[1] : null;
-    if (typeof presetName === 'string'
-      && /(^|[/\\])(?:@babel[/\\])?preset-react([/\\]|$)/.test(presetName)
-      && presetOptions && presetOptions.runtime === 'automatic') {
-      throw new Error(`${PLUGIN_NAME} cannot add JSX source metadata when @babel/preset-react uses the automatic runtime.`);
-    }
-  }
-}
-
 function configureBabelOptions(
   options: BabelOptions | null | undefined,
   sourcePlugin: string,
 ): BabelOptions {
-  const babelOptions = options || {};
-  assertCompatiblePreset(babelOptions);
-  const plugins = babelOptions.plugins || [];
+  const plugins = options?.plugins ?? [];
   return {
-    ...babelOptions,
-    plugins: plugins.some(plugin => isSamePlugin(plugin, sourcePlugin))
-      ? [...plugins]
+    ...options,
+    plugins: plugins.includes(sourcePlugin)
+      ? plugins
       : [...plugins, sourcePlugin],
   };
 }
