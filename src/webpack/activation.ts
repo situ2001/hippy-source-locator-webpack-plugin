@@ -1,9 +1,9 @@
-import path from 'node:path';
 import type { Compiler } from 'webpack';
 import {
   type DebugServerAdapter,
   installDebugServerMiddleware,
-} from './debug-server-adapter';
+} from '../hippy-devtools/debug-server-adapter';
+import { createRuntimeEntry } from './runtime-entry';
 import { configureWebpackForSourceLocator } from './webpack-configuration';
 
 const PLUGIN_NAME = 'HippySourceLocatorWebpackPlugin';
@@ -22,7 +22,7 @@ interface ActivationCompiler {
 }
 
 function enableDebugServerChildRegistration(): void {
-  const debugServerRegister = path.resolve(__dirname, 'debug-server-register.cjs');
+  const debugServerRegister = __filename;
   const requireOption = `--require=${JSON.stringify(debugServerRegister)}`;
   const nodeOptions = process.env.NODE_OPTIONS || '';
   if (!nodeOptions.includes(debugServerRegister)) {
@@ -42,7 +42,7 @@ export function activateSourceLocator(
 
   configureWebpackForSourceLocator(compiler, {
     reactModule: options.reactModule,
-    runtimeEntry: path.resolve(__dirname, 'runtime-entry.cjs'),
+    runtimeEntry: createRuntimeEntry(),
   });
 
   if (options.debugServer === false) return;
@@ -54,12 +54,4 @@ export function activateSourceLocator(
       logger?.warn(`Could not register ${packageName} inspector middleware: ${error.message}`);
     },
   });
-}
-
-export function activateDebugServerPreload(
-  entry: string = process.argv[1] || '',
-  projectRoot: string = process.cwd(),
-): void {
-  const isDebugServer = /(?:^|[/\\])(?:hippy-debug|debug-server|index-debug\.js)$/.test(entry);
-  if (isDebugServer) installDebugServerMiddleware(projectRoot, { forceLoad: true });
 }

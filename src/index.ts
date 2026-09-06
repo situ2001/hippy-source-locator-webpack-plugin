@@ -1,8 +1,8 @@
+import { activateDebugServerPreload } from './hippy-devtools/preload';
 import type { Compiler } from 'webpack';
 import {
   activateSourceLocator,
-} from './activation';
-import { injectToUiModule } from './runtime';
+} from './webpack/activation';
 
 export interface DebugServerAdapter {
   packageName: string;
@@ -17,7 +17,6 @@ export interface SourceLocatorPluginOptions {
 }
 
 export default class HippySourceLocatorWebpackPlugin {
-  static readonly injectToUiModule = injectToUiModule;
   readonly options: SourceLocatorPluginOptions;
 
   constructor(options: SourceLocatorPluginOptions = {}) {
@@ -28,3 +27,5 @@ export default class HippySourceLocatorWebpackPlugin {
     activateSourceLocator(compiler, this.options);
   }
 }
+
+if (!require.main) activateDebugServerPreload();

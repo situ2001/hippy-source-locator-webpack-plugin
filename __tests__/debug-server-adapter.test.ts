@@ -1,7 +1,7 @@
 import vm from 'node:vm';
-import * as debugServerAdapter from '../src/debug-server-adapter';
-import type { MiddlewareManager } from '../src/debug-server-adapter';
-import { createInspectorExpression } from '../src/inspector-expression';
+import * as debugServerAdapter from '../src/hippy-devtools/debug-server-adapter';
+import type { MiddlewareManager } from '../src/hippy-devtools/debug-server-adapter';
+import { createInspectorExpression } from '../src/hippy-devtools/inspector-expression';
 import test from './helpers/test';
 
 const {

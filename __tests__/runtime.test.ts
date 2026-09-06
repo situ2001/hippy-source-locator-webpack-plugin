@@ -1,14 +1,7 @@
-import type { FiberNode, InspectorGlobal } from '../src/runtime';
+import type { FiberNode, InspectorGlobal } from '../src/js-runtime/runtime';
 import test from './helpers/test';
 
-const HippySourceLocatorWebpackPlugin = require('../dist/index.cjs') as typeof import('../src/index').default;
-const runtime = require('../dist/runtime.cjs') as typeof import('../src/runtime');
-
-test('package exports the Webpack plugin and runtime adapter', (t) => {
-  t.is(typeof HippySourceLocatorWebpackPlugin, 'function');
-  t.is(typeof HippySourceLocatorWebpackPlugin.injectToUiModule, 'function');
-  t.is(typeof runtime.injectToUiModule, 'function');
-});
+import * as runtime from '../src/js-runtime/runtime';
 
 test('injectToUiModule installs a serializable inspector', (t) => {
   function Demo() {}

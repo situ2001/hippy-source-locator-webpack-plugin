@@ -15,10 +15,10 @@ interface InspectorGlobal {
 }
 
 /**
- * Function being evaluated in inspector side
+ * Evaluated in the Hippy app through Runtime.evaluate. Keep this function self-contained.
  * @returns String of node label and location
  */
-function inspectNode(nodeId: number): string | null {
+export function inspectNode(nodeId: number): string | null {
   const api = typeof global !== 'undefined'
     && (global as typeof global & InspectorGlobal).__HIPPY_DEVTOOLS__;
   if (!api || typeof api.inspectNode !== 'function') return null;
@@ -37,6 +37,3 @@ function inspectNode(nodeId: number): string | null {
   return `${label} — ${location}`;
 }
 
-export function createInspectorExpression(nodeId: number): string {
-  return `(${inspectNode.toString()})(${JSON.stringify(nodeId)})`;
-}

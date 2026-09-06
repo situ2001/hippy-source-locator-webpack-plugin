@@ -89,7 +89,7 @@ test('successful activation registers child preload once', (t) => {
   try {
     plugin.apply(compiler as unknown as Compiler);
     plugin.apply(compiler as unknown as Compiler);
-    const registrations = process.env.NODE_OPTIONS?.match(/debug-server-register\.cjs/g) || [];
+    const registrations = process.env.NODE_OPTIONS?.match(/index\.cjs/g) || [];
     t.is(registrations.length, 1);
   } finally {
     restoreNodeOptions(oldNodeOptions);

@@ -6,7 +6,7 @@ import test from 'node:test';
 test('Node preload adapter installs middleware in a debug-server child', () => {
   const result = spawnSync(process.execPath, [
     '--require',
-    path.resolve('dist/debug-server-register.cjs'),
+    path.resolve('dist/index.cjs'),
     path.resolve('__tests__/fixtures/hippy-debug'),
   ], {
     cwd: path.resolve('__tests__/fixtures/debug-project'),

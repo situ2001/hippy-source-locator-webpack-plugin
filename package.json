@@ -9,18 +9,7 @@
       "types": "./dist/index.d.ts",
       "require": "./dist/index.cjs",
       "default": "./dist/index.cjs"
-    },
-    "./runtime": {
-      "types": "./dist/runtime.d.ts",
-      "require": "./dist/runtime.cjs",
-      "default": "./dist/runtime.cjs"
-    },
-    "./debug-server-register": {
-      "types": "./dist/debug-server-register.d.ts",
-      "require": "./dist/debug-server-register.cjs",
-      "default": "./dist/debug-server-register.cjs"
-    },
-    "./package.json": "./package.json"
+    }
   },
   "scripts": {
     "build": "rimraf dist && rolldown --config rolldown.config.ts && tsc --project tsconfig.build.json",
