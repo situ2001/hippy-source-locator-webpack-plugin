@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { createInspectorExpression } from './inspector-expression';
+import { createRoutedCommandSender } from './routed-command';
 
 export const INSPECTED_NODE_METHOD = 'DOM.setInspectedNode';
 export const RUNTIME_EVALUATE_METHOD = 'Runtime.evaluate';
@@ -13,9 +14,11 @@ interface RuntimeEvaluateResponse {
   result?: { result?: { value?: unknown } };
 }
 export interface MiddlewareContext {
+  clientId?: string;
   msg?: { params?: { nodeId?: unknown } };
   sendToApp(command: DebugCommand): unknown;
 }
+export type CommandSender = (context: MiddlewareContext, command: DebugCommand) => unknown;
 export type NextMiddleware = () => unknown | Promise<unknown>;
 export type SelectionMiddleware = (context: MiddlewareContext, next: NextMiddleware) => unknown | Promise<unknown>;
 export type LocationLogger = (location: string) => void;
@@ -45,13 +48,14 @@ function getEvaluationValue(response: unknown): unknown {
 
 export function createSelectionMiddleware(
   logLocation: LocationLogger = location => console.log(location),
+  sendCommand: CommandSender = (context, command) => context.sendToApp(command),
 ): SelectionMiddleware {
   return async function inspectSelectedNode(context, next) {
     const response = await next();
     const nodeId = context.msg?.params?.nodeId;
     if (typeof nodeId !== 'number') return response;
     try {
-      Promise.resolve(context.sendToApp({
+      Promise.resolve(sendCommand(context, {
         method: RUNTIME_EVALUATE_METHOD,
         params: { expression: createInspectorExpression(nodeId), returnByValue: true },
       })).then((evaluationResponse) => {
@@ -109,12 +113,20 @@ function isPackageLoaded(
 function loadMiddlewareManagers(
   adapter: ResolvedDebugServerAdapter,
   loadModule: LoadModule = require,
-): MiddlewareManager[] {
+): { manager: MiddlewareManager; middleware: SelectionMiddleware }[] {
   loadModule(adapter.entry);
   const middlewareRoot = path.join(adapter.packageRoot, adapter.middlewareRoot);
   const android = loadModule(path.join(middlewareRoot, 'android')) as { androidMiddleWareManager: MiddlewareManager };
   const ios = loadModule(path.join(middlewareRoot, 'ios')) as { iOSMiddleWareManager: MiddlewareManager };
-  return [android.androidMiddleWareManager, ios.iOSMiddleWareManager];
+  return [
+    { manager: android.androidMiddleWareManager, middleware: createSelectionMiddleware() },
+    {
+      manager: ios.iOSMiddleWareManager,
+      // On iOS, DOM selection uses the native transport, while Runtime.evaluate uses JavaScriptCore.
+      // context.sendToApp() stays on the current transport, so evaluation must re-enter protocol routing.
+      middleware: createSelectionMiddleware(undefined, createRoutedCommandSender(middlewareRoot, loadModule)),
+    },
+  ];
 }
 
 export function installDebugServerMiddleware(
@@ -128,12 +140,11 @@ export function installDebugServerMiddleware(
   for (const adapter of activeAdapters) {
     try {
       const managers = loadMiddlewareManagers(adapter, options.loadModule);
-      const middleware = createSelectionMiddleware();
       const installed = managers.reduce(
-        (count, manager) => count + Number(prependMiddleware(manager, INSPECTED_NODE_METHOD, middleware)),
+        (count, { manager, middleware }) => count + Number(prependMiddleware(manager, INSPECTED_NODE_METHOD, middleware)),
         0,
       );
-      if (installed || managers.every(manager => manager?.[INSTALL_MARK])) {
+      if (installed || managers.every(({ manager }) => manager?.[INSTALL_MARK])) {
         return { installed: true, packageName: adapter.packageName };
       }
     } catch (error) {

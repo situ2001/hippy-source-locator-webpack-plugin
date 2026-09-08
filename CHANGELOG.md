@@ -1,5 +1,11 @@
 # hippy-source-locator-webpack-plugin
 
+## 0.1.1
+
+### Patch Changes
+
+- Fix missing source-location logs when selecting nodes on iOS by routing runtime evaluation to JavaScriptCore through the debug server.
+
 ## 0.1.0
 
 ### Minor Changes
