@@ -1,35 +1,60 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
-import { createRoutedCommandSender } from '../src/hippy-devtools/routed-command';
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createRoutedCommandSender } from "../src/hippy-devtools/routed-command";
 
-for (const failure of ['timeout', 'subscribe', 'publish'] as const) {
-  test(`routed evaluation releases its connections after ${failure}`, async (t) => {
-    t.mock.timers.enable({ apis: ['setTimeout'] });
+for (const failure of ["timeout", "subscribe", "publish"] as const) {
+  void test(`routed evaluation releases its connections after ${failure}`, async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
     const connections = new Set<PubSub>();
+
     class PubSub {
-      constructor() { connections.add(this); }
-      async subscribe() {
-        if (failure === 'subscribe') throw new Error('subscribe failed');
+      constructor() {
+        connections.add(this);
       }
-      async publish() {
-        if (failure === 'publish') throw new Error('publish failed');
+
+      async subscribe(): Promise<void> {
+        if (failure === "subscribe") {
+          throw new Error("subscribe failed");
+        }
       }
-      async disconnect() { connections.delete(this); }
+
+      async publish(): Promise<void> {
+        if (failure === "publish") {
+          throw new Error("publish failed");
+        }
+      }
+
+      async disconnect(): Promise<void> {
+        connections.delete(this);
+      }
     }
+
     const modules = {
-      getDBOperator: () => ({ Publisher: PubSub, Subscriber: PubSub }),
-      requestId: { create: () => -1 },
-      createUpwardChannel: () => 'up',
-      createDownwardChannel: () => 'down',
+      getDBOperator: (): { Publisher: typeof PubSub; Subscriber: typeof PubSub } => ({
+        Publisher: PubSub,
+        Subscriber: PubSub,
+      }),
+      requestId: { create: (): number => -1 },
+      createUpwardChannel: (): string => "up",
+      createDownwardChannel: (): string => "down",
     };
-    const send = createRoutedCommandSender('/debug-server/middlewares', () => modules);
-    const result = send({ clientId: 'page', sendToApp: () => assert.fail('Must use protocol routing') }, {
-      method: 'Runtime.evaluate', params: { expression: '1' },
-    });
-    const rejected = assert.rejects(result as Promise<unknown>, failure === 'timeout' ? /timed out/ : /failed/);
+    const send = createRoutedCommandSender("/debug-server/middlewares", () => modules);
+    const result = send(
+      { clientId: "page", sendToApp: () => assert.fail("Must use protocol routing") },
+      {
+        method: "Runtime.evaluate",
+        params: { expression: "1" },
+      },
+    );
+    const rejected = assert.rejects(
+      result as Promise<unknown>,
+      failure === "timeout" ? /timed out/ : /failed/,
+    );
     // Allow subscription and publishing to complete before simulating a missing reply.
-    await new Promise(resolve => setImmediate(resolve));
-    if (failure === 'timeout') t.mock.timers.tick(5000);
+    await new Promise((resolve) => setImmediate(resolve));
+    if (failure === "timeout") {
+      t.mock.timers.tick(5000);
+    }
     await rejected;
     assert.equal(connections.size, 0);
   });

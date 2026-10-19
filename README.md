@@ -9,13 +9,11 @@ pnpm add -D hippy-source-locator-webpack-plugin
 ```
 
 ```js
-const HippySourceLocatorWebpackPlugin = require('hippy-source-locator-webpack-plugin');
+const HippySourceLocatorWebpackPlugin = require("hippy-source-locator-webpack-plugin");
 
 module.exports = {
-  mode: 'development',
-  plugins: [
-    new HippySourceLocatorWebpackPlugin(),
-  ],
+  mode: "development",
+  plugins: [new HippySourceLocatorWebpackPlugin()],
 };
 ```
 
@@ -29,23 +27,23 @@ process.
 
 ## Options
 
-| Option | Default | Description |
-| --- | --- | --- |
-| `enabled` | Development and `none` modes | Controls plugin activation. |
-| `reactModule` | `@hippy/react` or its configured alias | Selects a custom Hippy React entry. |
-| `debugServer` | `true` | Enables selected-node forwarding. |
-| `hippyDebugServer` | `@hippy/debug-server-next` | Configures one or more custom debug-server adapters. |
+| Option             | Default                                | Description                                          |
+| ------------------ | -------------------------------------- | ---------------------------------------------------- |
+| `enabled`          | Development and `none` modes           | Controls plugin activation.                          |
+| `reactModule`      | `@hippy/react` or its configured alias | Selects a custom Hippy React entry.                  |
+| `debugServer`      | `true`                                 | Enables selected-node forwarding.                    |
+| `hippyDebugServer` | `@hippy/debug-server-next`             | Configures one or more custom debug-server adapters. |
 
 Example:
 
 ```js
 new HippySourceLocatorWebpackPlugin({
   enabled: true,
-  reactModule: require.resolve('@hippy/react'),
+  reactModule: require.resolve("@hippy/react"),
   debugServer: true,
   hippyDebugServer: {
-    packageName: 'your-debug-server-package',
-    middlewareRoot: 'path/to/middlewares',
+    packageName: "your-debug-server-package",
+    middlewareRoot: "path/to/middlewares",
   },
 });
 ```
@@ -59,6 +57,8 @@ after plugin activation so they inherit its preload configuration.
 
 ## Development
 
+Use Node.js 22.18+ within the 22.x series, or Node.js 24+, for the lint and format tools.
+
 `src/index.ts` is the public plugin entry. Implementation code is grouped by execution environment:
 
 - `src/js-runtime/`: code running in the Hippy app, including runtime injection,
@@ -69,10 +69,18 @@ after plugin activation so they inherit its preload configuration.
 
 ```sh
 pnpm install
+pnpm lint
+pnpm format:check
 pnpm typecheck
 pnpm build
 pnpm test
 ```
+
+Run `pnpm lint:fix` to apply automatic lint fixes and `pnpm format` to format files.
+The shared presets come from the package snapshot in `vendor/`. To update them,
+run `pnpm pack --pack-destination /path/to/this/repository/vendor` in the
+`@situ2001/code-quality` source package, then install the generated archive with
+`pnpm add -D ./vendor/situ2001-code-quality-<version>.tgz`.
 
 ## Releasing
 
