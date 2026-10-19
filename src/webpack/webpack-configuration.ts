@@ -1,14 +1,21 @@
-import type { Compiler } from 'webpack';
+import type { Compiler } from "webpack";
 
-const PLUGIN_NAME = 'HippySourceLocatorWebpackPlugin';
-const UI_MODULE_ALIAS = '__HIPPY_SOURCE_LOCATOR_UI_MODULE__';
+const PLUGIN_NAME = "HippySourceLocatorWebpackPlugin";
+const UI_MODULE_ALIAS = "__HIPPY_SOURCE_LOCATOR_UI_MODULE__";
 
 interface BabelOptions {
   plugins?: unknown[];
   [key: string]: unknown;
 }
-interface LoaderObject { loader?: unknown; options?: BabelOptions | string; [key: string]: unknown }
+
+interface LoaderObject {
+  loader?: unknown;
+  options?: BabelOptions | string;
+  [key: string]: unknown;
+}
+
 type LoaderEntry = string | LoaderObject;
+
 interface WebpackRule {
   loader?: unknown;
   oneOf?: WebpackRule[];
@@ -17,16 +24,19 @@ interface WebpackRule {
   use?: LoaderEntry | LoaderEntry[];
   [key: string]: unknown;
 }
+
 interface ResolveOptions {
   alias?: Record<string, unknown>;
   [key: string]: unknown;
 }
+
 interface WebpackOptions {
   entry: unknown;
   mode?: string;
   module?: { rules?: WebpackRule[]; [key: string]: unknown };
   resolve?: ResolveOptions;
 }
+
 interface MutableCompiler {
   context: string;
   options: WebpackOptions;
@@ -38,8 +48,9 @@ export interface WebpackConfigurationOptions {
 }
 
 function isBabelLoader(loader: unknown): loader is string {
-  return typeof loader === 'string'
-    && /(^|[/\\])babel-loader([/\\]|$)/.test(loader.split('?')[0] ?? '');
+  return (
+    typeof loader === "string" && /(^|[/\\])babel-loader([/\\]|$)/.test(loader.split("?")[0] ?? "")
+  );
 }
 
 function configureBabelOptions(
@@ -49,9 +60,7 @@ function configureBabelOptions(
   const plugins = options?.plugins ?? [];
   return {
     ...options,
-    plugins: plugins.includes(sourcePlugin)
-      ? plugins
-      : [...plugins, sourcePlugin],
+    plugins: plugins.includes(sourcePlugin) ? plugins : [...plugins, sourcePlugin],
   };
 }
 
@@ -59,13 +68,19 @@ function configureUseEntry(
   useEntry: LoaderEntry,
   sourcePlugin: string,
 ): { entry: LoaderEntry; count: number } {
-  if (typeof useEntry === 'string') {
+  if (typeof useEntry === "string") {
     return isBabelLoader(useEntry)
-      ? { entry: { loader: useEntry, options: configureBabelOptions(null, sourcePlugin) }, count: 1 }
+      ? {
+          entry: { loader: useEntry, options: configureBabelOptions(null, sourcePlugin) },
+          count: 1,
+        }
       : { entry: useEntry, count: 0 };
   }
-  if (!useEntry || !isBabelLoader(useEntry.loader)) return { entry: useEntry, count: 0 };
-  if (typeof useEntry.options === 'string') {
+  // oxlint-disable-next-line typescript/no-unnecessary-condition, typescript/strict-boolean-expressions -- Loader entries come from the host Webpack configuration.
+  if (!useEntry || !isBabelLoader(useEntry.loader)) {
+    return { entry: useEntry, count: 0 };
+  }
+  if (typeof useEntry.options === "string") {
     throw new Error(`${PLUGIN_NAME} does not support query-string babel-loader options.`);
   }
   return {
@@ -79,7 +94,7 @@ function configureRules(
   sourcePlugin: string,
 ): { rules: WebpackRule[]; count: number } {
   let count = 0;
-  const configuredRules = (rules || []).map((rule) => {
+  const configuredRules = (rules ?? []).map((rule) => {
     const configuredRule = { ...rule };
     if (Array.isArray(rule.oneOf)) {
       const nested = configureRules(rule.oneOf, sourcePlugin);
@@ -97,13 +112,13 @@ function configureRules(
         count += configured.count;
         return configured.entry;
       });
-    } else if (rule.use) {
+    } else if (rule.use !== undefined && rule.use !== "") {
       const configured = configureUseEntry(rule.use, sourcePlugin);
       configuredRule.use = configured.entry;
       count += configured.count;
     }
     if (isBabelLoader(rule.loader)) {
-      if (typeof rule.options === 'string') {
+      if (typeof rule.options === "string") {
         throw new Error(`${PLUGIN_NAME} does not support query-string babel-loader options.`);
       }
       configuredRule.options = configureBabelOptions(rule.options, sourcePlugin);
@@ -115,35 +130,50 @@ function configureRules(
 }
 
 function prependEntry(entry: unknown, injectedEntry: string): unknown {
-  if (typeof entry === 'string') return entry === injectedEntry ? entry : [injectedEntry, entry];
-  if (Array.isArray(entry)) return entry.includes(injectedEntry) ? entry : [injectedEntry, ...entry];
-  if (typeof entry === 'function') {
+  if (typeof entry === "string") {
+    return entry === injectedEntry ? entry : [injectedEntry, entry];
+  }
+  if (Array.isArray(entry)) {
+    const entries: unknown[] = entry;
+    return entries.includes(injectedEntry) ? entries : [injectedEntry, ...entries];
+  }
+  if (typeof entry === "function") {
     return function injectedEntryFactory(this: unknown, ...args: unknown[]): unknown {
       const result: unknown = entry.apply(this, args);
-      if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
-        return Promise.resolve(result).then(value => prependEntry(value, injectedEntry));
+      if (
+        result !== null &&
+        result !== undefined &&
+        typeof (result as PromiseLike<unknown>).then === "function"
+      ) {
+        return Promise.resolve(result).then((value) => prependEntry(value, injectedEntry));
       }
       return prependEntry(result, injectedEntry);
     };
   }
-  if (entry && typeof entry === 'object') {
+  if (entry !== null && typeof entry === "object") {
     const entryObject = entry as Record<string, unknown>;
-    if (Object.prototype.hasOwnProperty.call(entryObject, 'import')) {
+    if (Object.prototype.hasOwnProperty.call(entryObject, "import")) {
       return { ...entryObject, import: prependEntry(entryObject.import, injectedEntry) };
     }
     return Object.fromEntries(
-      Object.entries(entryObject).map(([name, value]) => [name, prependEntry(value, injectedEntry)]),
+      Object.entries(entryObject).map(([name, value]) => [
+        name,
+        prependEntry(value, injectedEntry),
+      ]),
     );
   }
   throw new TypeError(`${PLUGIN_NAME} received an unsupported Webpack entry configuration.`);
 }
 
 function resolveReactModule(reactModule: string | undefined, compiler: MutableCompiler): string {
-  const aliases = compiler.options.resolve?.alias || {};
-  const configuredAlias = aliases['@hippy/react$'] || aliases['@hippy/react'];
-  const request = reactModule || configuredAlias || '@hippy/react';
-  if (typeof request !== 'string') {
-    throw new TypeError(`${PLUGIN_NAME} requires reactModule or the @hippy/react alias to be a string.`);
+  const aliases = compiler.options.resolve?.alias ?? {};
+  const request =
+    [reactModule, aliases["@hippy/react$"], aliases["@hippy/react"]].find(Boolean) ??
+    "@hippy/react";
+  if (typeof request !== "string") {
+    throw new TypeError(
+      `${PLUGIN_NAME} requires reactModule or the @hippy/react alias to be a string.`,
+    );
   }
   return require.resolve(request, { paths: [compiler.context] });
 }
@@ -153,12 +183,12 @@ export function configureWebpackForSourceLocator(
   options: WebpackConfigurationOptions,
 ): void {
   const mutableCompiler = compiler as unknown as MutableCompiler;
-  const sourcePlugin = require.resolve('@babel/plugin-transform-react-jsx-source', {
+  const sourcePlugin = require.resolve("@babel/plugin-transform-react-jsx-source", {
     paths: [mutableCompiler.context, __dirname],
   });
   const reactModule = resolveReactModule(options.reactModule, mutableCompiler);
   const configuredRules = configureRules(mutableCompiler.options.module?.rules, sourcePlugin);
-  if (!configuredRules.count) {
+  if (configuredRules.count === 0) {
     throw new Error(`${PLUGIN_NAME} could not find babel-loader in module.rules.`);
   }
   const configuredEntry = prependEntry(mutableCompiler.options.entry, options.runtimeEntry);

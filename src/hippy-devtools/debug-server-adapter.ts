@@ -1,33 +1,56 @@
-import path from 'node:path';
-import { createInspectorExpression } from './inspector-expression';
-import { createRoutedCommandSender } from './routed-command';
+import path from "node:path";
+import { createInspectorExpression } from "./inspector-expression";
+import { createRoutedCommandSender } from "./routed-command";
 
-export const INSPECTED_NODE_METHOD = 'DOM.setInspectedNode';
-export const RUNTIME_EVALUATE_METHOD = 'Runtime.evaluate';
-const INSTALL_MARK = Symbol.for('hippy-source-locator-webpack-plugin/debug-server-middleware');
-const LOCATION_LOG_PREFIX = '[Hippy Source Locator]';
+export const INSPECTED_NODE_METHOD = "DOM.setInspectedNode";
 
-export interface DebugServerAdapter { packageName: string; middlewareRoot: string }
-interface ResolvedDebugServerAdapter extends DebugServerAdapter { entry: string; packageRoot: string }
-interface DebugCommand { method: string; params: Record<string, unknown> }
+export const RUNTIME_EVALUATE_METHOD = "Runtime.evaluate";
+
+const INSTALL_MARK = Symbol.for("hippy-source-locator-webpack-plugin/debug-server-middleware");
+const LOCATION_LOG_PREFIX = "[Hippy Source Locator]";
+
+export interface DebugServerAdapter {
+  packageName: string;
+  middlewareRoot: string;
+}
+
+interface ResolvedDebugServerAdapter extends DebugServerAdapter {
+  entry: string;
+  packageRoot: string;
+}
+
+interface DebugCommand {
+  method: string;
+  params: Record<string, unknown>;
+}
+
 interface RuntimeEvaluateResponse {
   result?: { result?: { value?: unknown } };
 }
+
 export interface MiddlewareContext {
   clientId?: string;
   msg?: { params?: { nodeId?: unknown } };
   sendToApp(command: DebugCommand): unknown;
 }
+
 export type CommandSender = (context: MiddlewareContext, command: DebugCommand) => unknown;
-export type NextMiddleware = () => unknown | Promise<unknown>;
-export type SelectionMiddleware = (context: MiddlewareContext, next: NextMiddleware) => unknown | Promise<unknown>;
+
+export type NextMiddleware = () => unknown;
+
+export type SelectionMiddleware = (context: MiddlewareContext, next: NextMiddleware) => unknown;
+
 export type LocationLogger = (location: string) => void;
+
 export interface MiddlewareManager {
   upwardMiddleWareListMap: Record<string, SelectionMiddleware | SelectionMiddleware[]>;
   [INSTALL_MARK]?: boolean;
 }
+
 type ResolveModule = (request: string, options?: { paths?: string[] }) => string;
+
 type LoadModule = (request: string) => unknown;
+
 export interface InstallDebugServerOptions {
   adapters?: DebugServerAdapter | DebugServerAdapter[];
   forceLoad?: boolean;
@@ -36,10 +59,14 @@ export interface InstallDebugServerOptions {
   onError?: (error: Error, packageName: string) => void;
   resolveModule?: ResolveModule;
 }
-export interface InstallDebugServerResult { installed: boolean; packageName: string | null }
+
+export interface InstallDebugServerResult {
+  installed: boolean;
+  packageName: string | null;
+}
 
 export const DEBUG_SERVER_ADAPTERS: DebugServerAdapter[] = [
-  { packageName: '@hippy/debug-server-next', middlewareRoot: 'middlewares' },
+  { packageName: "@hippy/debug-server-next", middlewareRoot: "middlewares" },
 ];
 
 function getEvaluationValue(response: unknown): unknown {
@@ -47,21 +74,30 @@ function getEvaluationValue(response: unknown): unknown {
 }
 
 export function createSelectionMiddleware(
-  logLocation: LocationLogger = location => console.log(location),
+  logLocation: LocationLogger = (location) => console.log(location),
   sendCommand: CommandSender = (context, command) => context.sendToApp(command),
 ): SelectionMiddleware {
   return async function inspectSelectedNode(context, next) {
     const response = await next();
     const nodeId = context.msg?.params?.nodeId;
-    if (typeof nodeId !== 'number') return response;
+    if (typeof nodeId !== "number") {
+      return response;
+    }
     try {
-      Promise.resolve(sendCommand(context, {
-        method: RUNTIME_EVALUATE_METHOD,
-        params: { expression: createInspectorExpression(nodeId), returnByValue: true },
-      })).then((evaluationResponse) => {
-        const location = getEvaluationValue(evaluationResponse);
-        if (typeof location === 'string') logLocation(`${LOCATION_LOG_PREFIX} ${location}`);
-      }).catch(() => undefined);
+      Promise.resolve(
+        sendCommand(context, {
+          method: RUNTIME_EVALUATE_METHOD,
+          params: { expression: createInspectorExpression(nodeId), returnByValue: true },
+        }),
+      )
+        .then((evaluationResponse) => {
+          const location = getEvaluationValue(evaluationResponse);
+          if (typeof location === "string") {
+            logLocation(`${LOCATION_LOG_PREFIX} ${location}`);
+          }
+        })
+        // oxlint-disable-next-line readability/no-empty-error-handler -- Evaluation failures must not interrupt DevTools selection.
+        .catch(() => undefined);
     } catch {
       return response;
     }
@@ -74,12 +110,19 @@ export function prependMiddleware(
   method: string,
   middleware: SelectionMiddleware,
 ): boolean {
-  if (!manager || !manager.upwardMiddleWareListMap || manager[INSTALL_MARK]) return false;
+  // oxlint-disable-next-line typescript/no-unnecessary-condition, typescript/strict-boolean-expressions -- Middleware managers are loaded from external debug-server packages.
+  if (!manager || !manager.upwardMiddleWareListMap || manager[INSTALL_MARK] === true) {
+    return false;
+  }
   const middlewareMap = manager.upwardMiddleWareListMap;
   const current = middlewareMap[method];
-  if (!current) middlewareMap[method] = middleware;
-  else if (Array.isArray(current)) middlewareMap[method] = [middleware, ...current];
-  else middlewareMap[method] = [middleware, current];
+  if (!current) {
+    middlewareMap[method] = middleware;
+  } else if (Array.isArray(current)) {
+    middlewareMap[method] = [middleware, ...current];
+  } else {
+    middlewareMap[method] = [middleware, current];
+  }
   Object.defineProperty(manager, INSTALL_MARK, { value: true });
   return true;
 }
@@ -91,10 +134,18 @@ function resolveDebugServerAdapters(
 ): ResolvedDebugServerAdapter[] {
   const configuredAdapters = Array.isArray(adapters) ? adapters : [adapters];
   return configuredAdapters.reduce<ResolvedDebugServerAdapter[]>((result, adapter) => {
-    if (!adapter || typeof adapter.packageName !== 'string' || typeof adapter.middlewareRoot !== 'string') return result;
+    if (
+      // oxlint-disable-next-line typescript/no-unnecessary-condition, typescript/strict-boolean-expressions -- Plugin options can come from untyped host Webpack configurations.
+      !adapter ||
+      typeof adapter.packageName !== "string" ||
+      typeof adapter.middlewareRoot !== "string"
+    ) {
+      return result;
+    }
     try {
       const entry = resolveModule(adapter.packageName, { paths: [projectRoot] });
       result.push({ ...adapter, entry, packageRoot: path.dirname(entry) });
+      // oxlint-disable-next-line readability/no-empty-error-handler -- A debug-server adapter may not be installed in the host project.
     } catch {
       // The host project may use either debug-server distribution.
     }
@@ -107,7 +158,9 @@ function isPackageLoaded(
   moduleCache: Record<string, unknown> = require.cache,
 ): boolean {
   const packagePrefix = `${adapter.packageRoot}${path.sep}`;
-  return Object.keys(moduleCache).some(fileName => fileName === adapter.entry || fileName.startsWith(packagePrefix));
+  return Object.keys(moduleCache).some(
+    (fileName) => fileName === adapter.entry || fileName.startsWith(packagePrefix),
+  );
 }
 
 function loadMiddlewareManagers(
@@ -116,15 +169,22 @@ function loadMiddlewareManagers(
 ): { manager: MiddlewareManager; middleware: SelectionMiddleware }[] {
   loadModule(adapter.entry);
   const middlewareRoot = path.join(adapter.packageRoot, adapter.middlewareRoot);
-  const android = loadModule(path.join(middlewareRoot, 'android')) as { androidMiddleWareManager: MiddlewareManager };
-  const ios = loadModule(path.join(middlewareRoot, 'ios')) as { iOSMiddleWareManager: MiddlewareManager };
+  const android = loadModule(path.join(middlewareRoot, "android")) as {
+    androidMiddleWareManager: MiddlewareManager;
+  };
+  const ios = loadModule(path.join(middlewareRoot, "ios")) as {
+    iOSMiddleWareManager: MiddlewareManager;
+  };
   return [
     { manager: android.androidMiddleWareManager, middleware: createSelectionMiddleware() },
     {
       manager: ios.iOSMiddleWareManager,
       // On iOS, DOM selection uses the native transport, while Runtime.evaluate uses JavaScriptCore.
       // context.sendToApp() stays on the current transport, so evaluation must re-enter protocol routing.
-      middleware: createSelectionMiddleware(undefined, createRoutedCommandSender(middlewareRoot, loadModule)),
+      middleware: createSelectionMiddleware(
+        undefined,
+        createRoutedCommandSender(middlewareRoot, loadModule),
+      ),
     },
   ];
 }
@@ -134,21 +194,26 @@ export function installDebugServerMiddleware(
   options: InstallDebugServerOptions = {},
 ): InstallDebugServerResult {
   const adapters = resolveDebugServerAdapters(projectRoot, options.resolveModule, options.adapters);
-  const activeAdapters = options.forceLoad
-    ? adapters
-    : adapters.filter(adapter => isPackageLoaded(adapter, options.moduleCache));
+  const activeAdapters =
+    options.forceLoad === true
+      ? adapters
+      : adapters.filter((adapter) => isPackageLoaded(adapter, options.moduleCache));
   for (const adapter of activeAdapters) {
     try {
       const managers = loadMiddlewareManagers(adapter, options.loadModule);
       const installed = managers.reduce(
-        (count, { manager, middleware }) => count + Number(prependMiddleware(manager, INSPECTED_NODE_METHOD, middleware)),
+        (count, { manager, middleware }) =>
+          count + Number(prependMiddleware(manager, INSPECTED_NODE_METHOD, middleware)),
         0,
       );
-      if (installed || managers.every(({ manager }) => manager?.[INSTALL_MARK])) {
+      if (installed > 0 || managers.every(({ manager }) => manager[INSTALL_MARK] === true)) {
         return { installed: true, packageName: adapter.packageName };
       }
     } catch (error) {
-      options.onError?.(error instanceof Error ? error : new Error(String(error)), adapter.packageName);
+      options.onError?.(
+        error instanceof Error ? error : new Error(String(error)),
+        adapter.packageName,
+      );
     }
   }
   return { installed: false, packageName: null };

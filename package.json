@@ -13,6 +13,10 @@
   },
   "scripts": {
     "build": "rimraf dist && rolldown --config rolldown.config.ts && tsc --project tsconfig.build.json",
+    "lint": "oxlint -c oxlint.config.mts --deny-warnings .",
+    "lint:fix": "oxlint -c oxlint.config.mts --fix --deny-warnings .",
+    "format": "oxfmt -c oxfmt.config.mts .",
+    "format:check": "oxfmt -c oxfmt.config.mts --check .",
     "changeset": "changeset",
     "changeset:status": "changeset status",
     "version-packages": "changeset version",
@@ -47,8 +51,12 @@
   },
   "devDependencies": {
     "@changesets/cli": "3.0.1",
+    "@situ2001/code-quality": "file:vendor/situ2001-code-quality-0.1.1.tgz",
     "@types/node": "20.19.43",
     "acorn": "8.18.0",
+    "oxfmt": "0.73.0",
+    "oxlint": "1.88.0",
+    "oxlint-tsgolint": "7.0.2004",
     "rimraf": "6.1.3",
     "rolldown": "^1.2.7",
     "tsx": "4.23.13",

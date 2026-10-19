@@ -1,12 +1,12 @@
-import type { Compiler } from 'webpack';
+import type { Compiler } from "webpack";
 import {
   type DebugServerAdapter,
   installDebugServerMiddleware,
-} from '../hippy-devtools/debug-server-adapter';
-import { createRuntimeEntry } from './runtime-entry';
-import { configureWebpackForSourceLocator } from './webpack-configuration';
+} from "../hippy-devtools/debug-server-adapter";
+import { createRuntimeEntry } from "./runtime-entry";
+import { configureWebpackForSourceLocator } from "./webpack-configuration";
 
-const PLUGIN_NAME = 'HippySourceLocatorWebpackPlugin';
+const PLUGIN_NAME = "HippySourceLocatorWebpackPlugin";
 
 export interface SourceLocatorActivationOptions {
   enabled?: boolean;
@@ -24,7 +24,7 @@ interface ActivationCompiler {
 function enableDebugServerChildRegistration(): void {
   const debugServerRegister = __filename;
   const requireOption = `--require=${JSON.stringify(debugServerRegister)}`;
-  const nodeOptions = process.env.NODE_OPTIONS || '';
+  const nodeOptions = process.env.NODE_OPTIONS ?? "";
   if (!nodeOptions.includes(debugServerRegister)) {
     process.env.NODE_OPTIONS = `${nodeOptions} ${requireOption}`.trim();
   }
@@ -35,17 +35,20 @@ export function activateSourceLocator(
   options: SourceLocatorActivationOptions,
 ): void {
   const host = compiler as unknown as ActivationCompiler;
-  const enabled = typeof options.enabled === 'boolean'
-    ? options.enabled
-    : host.options.mode !== 'production';
-  if (!enabled) return;
+  const enabled =
+    typeof options.enabled === "boolean" ? options.enabled : host.options.mode !== "production";
+  if (!enabled) {
+    return;
+  }
 
   configureWebpackForSourceLocator(compiler, {
     reactModule: options.reactModule,
     runtimeEntry: createRuntimeEntry(),
   });
 
-  if (options.debugServer === false) return;
+  if (options.debugServer === false) {
+    return;
+  }
   enableDebugServerChildRegistration();
   const logger = host.getInfrastructureLogger?.(PLUGIN_NAME);
   installDebugServerMiddleware(host.context, {
