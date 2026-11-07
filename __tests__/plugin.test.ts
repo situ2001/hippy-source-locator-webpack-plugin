@@ -205,12 +205,23 @@ test("configuration transaction supports Webpack entry variants", async (context
 
   context.true(hasRuntimeFirst(configureEntry("./src/main.js")));
   context.true(hasRuntimeFirst(configureEntry(["./src/main.js"])));
-  const descriptor = configureEntry({ import: "./src/main.js" }) as { import: unknown };
-  context.true(hasRuntimeFirst(descriptor.import));
+  const entriesNamedImport = configureEntry({ import: "./src/main.js", app: "./src/main.js" }) as {
+    import: unknown;
+    app: unknown;
+  };
+  context.true(hasRuntimeFirst(entriesNamedImport.import));
+  context.true(hasRuntimeFirst(entriesNamedImport.app));
+  const descriptors = configureEntry({
+    app: { import: ["./src/main.js"], filename: "app.js" },
+  }) as {
+    app: { import: unknown; filename: string };
+  };
+  context.true(hasRuntimeFirst(descriptors.app.import));
+  context.is(descriptors.app.filename, "app.js");
   const entries = configureEntry({ app: "./src/main.js" }) as { app: unknown };
   context.true(hasRuntimeFirst(entries.app));
   const syncFactory = configureEntry(() => "./src/main.js") as () => unknown;
-  context.true(hasRuntimeFirst(syncFactory()));
+  context.true(hasRuntimeFirst(await syncFactory()));
   const asyncFactory = configureEntry(async () => "./src/main.js") as () => Promise<unknown>;
   context.true(hasRuntimeFirst(await asyncFactory()));
 });

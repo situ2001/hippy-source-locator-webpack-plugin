@@ -16,10 +16,8 @@ interface LoaderObject {
 
 type LoaderEntry = string | LoaderObject;
 
-interface WebpackRule {
-  loader?: unknown;
+interface WebpackRule extends LoaderObject {
   oneOf?: WebpackRule[];
-  options?: BabelOptions | string;
   rules?: WebpackRule[];
   use?: LoaderEntry | LoaderEntry[];
   [key: string]: unknown;
@@ -64,27 +62,29 @@ function configureBabelOptions(
   };
 }
 
-function configureUseEntry(
-  useEntry: LoaderEntry,
+function configureBabelLoader(
+  entry: LoaderObject,
+  sourcePlugin: string,
+): { entry: LoaderObject; count: number };
+function configureBabelLoader(
+  entry: LoaderEntry,
+  sourcePlugin: string,
+): { entry: LoaderEntry; count: number };
+
+function configureBabelLoader(
+  entry: LoaderEntry,
   sourcePlugin: string,
 ): { entry: LoaderEntry; count: number } {
-  if (typeof useEntry === "string") {
-    return isBabelLoader(useEntry)
-      ? {
-          entry: { loader: useEntry, options: configureBabelOptions(null, sourcePlugin) },
-          count: 1,
-        }
-      : { entry: useEntry, count: 0 };
+  const loader = typeof entry === "string" ? { loader: entry } : entry;
+  // oxlint-disable-next-line typescript/no-unnecessary-condition, typescript/strict-boolean-expressions -- Webpack permits falsy loader entries in host configurations.
+  if (!loader || !isBabelLoader(loader.loader)) {
+    return { entry, count: 0 };
   }
-  // oxlint-disable-next-line typescript/no-unnecessary-condition, typescript/strict-boolean-expressions -- Loader entries come from the host Webpack configuration.
-  if (!useEntry || !isBabelLoader(useEntry.loader)) {
-    return { entry: useEntry, count: 0 };
-  }
-  if (typeof useEntry.options === "string") {
+  if (typeof loader.options === "string") {
     throw new Error(`${PLUGIN_NAME} does not support query-string babel-loader options.`);
   }
   return {
-    entry: { ...useEntry, options: configureBabelOptions(useEntry.options, sourcePlugin) },
+    entry: { ...loader, options: configureBabelOptions(loader.options, sourcePlugin) },
     count: 1,
   };
 }
@@ -95,7 +95,9 @@ function configureRules(
 ): { rules: WebpackRule[]; count: number } {
   let count = 0;
   const configuredRules = (rules ?? []).map((rule) => {
-    const configuredRule = { ...rule };
+    const configured = configureBabelLoader(rule, sourcePlugin);
+    const configuredRule: WebpackRule = { ...configured.entry };
+    count += configured.count;
     if (Array.isArray(rule.oneOf)) {
       const nested = configureRules(rule.oneOf, sourcePlugin);
       configuredRule.oneOf = nested.rules;
@@ -108,61 +110,64 @@ function configureRules(
     }
     if (Array.isArray(rule.use)) {
       configuredRule.use = rule.use.map((useEntry) => {
-        const configured = configureUseEntry(useEntry, sourcePlugin);
+        const configured = configureBabelLoader(useEntry, sourcePlugin);
         count += configured.count;
         return configured.entry;
       });
     } else if (rule.use !== undefined && rule.use !== "") {
-      const configured = configureUseEntry(rule.use, sourcePlugin);
+      const configured = configureBabelLoader(rule.use, sourcePlugin);
       configuredRule.use = configured.entry;
       count += configured.count;
-    }
-    if (isBabelLoader(rule.loader)) {
-      if (typeof rule.options === "string") {
-        throw new Error(`${PLUGIN_NAME} does not support query-string babel-loader options.`);
-      }
-      configuredRule.options = configureBabelOptions(rule.options, sourcePlugin);
-      count += 1;
     }
     return configuredRule;
   });
   return { rules: configuredRules, count };
 }
 
-function prependEntry(entry: unknown, injectedEntry: string): unknown {
-  if (typeof entry === "string") {
-    return entry === injectedEntry ? entry : [injectedEntry, entry];
+type EntryImports = string | string[];
+
+type EntryValue = EntryImports | { import?: EntryImports; [key: string]: unknown };
+
+type StaticEntry = EntryImports | Record<string, EntryValue>;
+
+type EntryFactory = (this: unknown) => Promise<StaticEntry>;
+
+function prependImports(imports: EntryImports, injectedEntry: string): string[] {
+  const entries = typeof imports === "string" ? [imports] : imports;
+  return entries.includes(injectedEntry) ? entries : [injectedEntry, ...entries];
+}
+
+function prependEntryValue(value: EntryValue, injectedEntry: string): EntryValue {
+  if (typeof value === "string" || Array.isArray(value)) {
+    return prependImports(value, injectedEntry);
   }
-  if (Array.isArray(entry)) {
-    const entries: unknown[] = entry;
-    return entries.includes(injectedEntry) ? entries : [injectedEntry, ...entries];
-  }
-  if (typeof entry === "function") {
-    return function injectedEntryFactory(this: unknown, ...args: unknown[]): unknown {
-      const result: unknown = entry.apply(this, args);
-      if (
-        result !== null &&
-        result !== undefined &&
-        typeof (result as PromiseLike<unknown>).then === "function"
-      ) {
-        return Promise.resolve(result).then((value) => prependEntry(value, injectedEntry));
-      }
-      return prependEntry(result, injectedEntry);
-    };
+  // Webpack 5 supplies the default import after plugin.apply(), so preserve it here.
+  return { ...value, import: prependImports(value.import ?? "./src", injectedEntry) };
+}
+
+function prependStaticEntry(entry: unknown, injectedEntry: string): StaticEntry {
+  if (typeof entry === "string" || Array.isArray(entry)) {
+    return prependImports(entry as EntryImports, injectedEntry);
   }
   if (entry !== null && typeof entry === "object") {
-    const entryObject = entry as Record<string, unknown>;
-    if (Object.prototype.hasOwnProperty.call(entryObject, "import")) {
-      return { ...entryObject, import: prependEntry(entryObject.import, injectedEntry) };
-    }
     return Object.fromEntries(
-      Object.entries(entryObject).map(([name, value]) => [
+      Object.entries(entry as Record<string, EntryValue>).map(([name, value]) => [
         name,
-        prependEntry(value, injectedEntry),
+        prependEntryValue(value, injectedEntry),
       ]),
     );
   }
   throw new TypeError(`${PLUGIN_NAME} received an unsupported Webpack entry configuration.`);
+}
+
+function prependEntry(entry: unknown, injectedEntry: string): StaticEntry | EntryFactory {
+  if (typeof entry !== "function") {
+    return prependStaticEntry(entry, injectedEntry);
+  }
+  const factory = entry as (this: unknown) => unknown;
+  return async function injectedEntryFactory(this: unknown): Promise<StaticEntry> {
+    return prependStaticEntry(await factory.call(this), injectedEntry);
+  };
 }
 
 function resolveReactModule(reactModule: string | undefined, compiler: MutableCompiler): string {
