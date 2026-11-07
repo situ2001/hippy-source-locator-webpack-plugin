@@ -82,5 +82,15 @@ The shared presets come from `@situ2001/code-standards`. Update them with
 
 ## Releasing
 
-Run `pnpm changeset` for each user-visible change, `pnpm version-packages` to prepare
-the version and changelog, then `pnpm release` to publish.
+Run `pnpm changeset` for each user-visible change and commit the generated file with
+the change. CI builds and tests each PR update, including the Webpack 4/5 compiler checks.
+After a merge to `main`, Changesets creates or updates a Release PR with the version
+and changelog. Merge that PR to publish the package to npm.
+
+Add an Actions repository secret named `NPM_TOKEN` in Settings → Secrets and variables →
+Actions. Use an npm granular token with publish access to this package and bypass 2FA
+enabled for automated publishing. The release job reads it through `NODE_AUTH_TOKEN`;
+PR checks do not receive the token.
+
+Enable “Allow GitHub Actions to create and approve pull requests” in Settings → Actions →
+General. CI explicitly dispatches checks for bot-created Release PRs.
