@@ -1,5 +1,6 @@
-import { activateDebugServerPreload } from "./hippy-devtools/preload";
 import type { Compiler } from "webpack";
+
+import { activateDebugServerPreload } from "./hippy-devtools/preload";
 import { activateSourceLocator } from "./webpack/activation";
 
 export interface DebugServerAdapter {

@@ -1,11 +1,13 @@
+import type SourceLocatorPlugin from "../src/index";
+
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import vm from "node:vm";
+
 import webpack from "webpack";
-import type SourceLocatorPlugin from "../src/index";
 
 const Plugin = require("../dist/index.cjs") as typeof SourceLocatorPlugin;
 

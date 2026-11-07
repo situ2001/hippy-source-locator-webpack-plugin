@@ -1,5 +1,6 @@
-import HippySourceLocatorWebpackPlugin, { type SourceLocatorPluginOptions } from "../src/index";
 import type { Compiler } from "webpack";
+
+import HippySourceLocatorWebpackPlugin, { type SourceLocatorPluginOptions } from "../src/index";
 import { type Inspector, type UiManagerModule, injectToUiModule } from "../src/js-runtime/runtime";
 
 const options: SourceLocatorPluginOptions = { enabled: true, debugServer: false };

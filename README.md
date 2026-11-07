@@ -77,10 +77,8 @@ pnpm test
 ```
 
 Run `pnpm lint:fix` to apply automatic lint fixes and `pnpm format` to format files.
-The shared presets come from the package snapshot in `vendor/`. To update them,
-run `pnpm pack --pack-destination /path/to/this/repository/vendor` in the
-`@situ2001/code-quality` source package, then install the generated archive with
-`pnpm add -D ./vendor/situ2001-code-quality-<version>.tgz`.
+The shared presets come from `@situ2001/code-standards`. Update them with
+`pnpm add -D --save-exact @situ2001/code-standards@latest`.
 
 ## Releasing
 

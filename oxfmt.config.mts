@@ -1,5 +1,6 @@
 import type { OxfmtConfig } from "oxfmt";
-import base from "@situ2001/code-quality/oxfmt";
+
+import base from "@situ2001/code-standards/oxfmt";
 
 export default {
   ...base,

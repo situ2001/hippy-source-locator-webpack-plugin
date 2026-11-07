@@ -1,4 +1,5 @@
 import type { Compiler } from "webpack";
+
 import {
   type DebugServerAdapter,
   installDebugServerMiddleware,

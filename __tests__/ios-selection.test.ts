@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import test from "node:test";
 import vm from "node:vm";
+
 import {
   installDebugServerMiddleware,
   type MiddlewareManager,
@@ -9,7 +10,7 @@ import {
   type InstallDebugServerResult,
 } from "../src/hippy-devtools/debug-server-adapter";
 
-void test("installed iOS middleware routes evaluation to JavaScriptCore and logs the selected node", async (t) => {
+void test("installed iOS middleware routes evaluation to JavaScriptCore and logs the selected node", async (context) => {
   const bus = new EventEmitter();
   const calls: string[] = [];
   const logs: string[] = [];
@@ -67,7 +68,7 @@ void test("installed iOS middleware routes evaluation to JavaScriptCore and logs
 
   install();
   install();
-  t.mock.method(console, "log", (location: string) => logs.push(location));
+  context.mock.method(console, "log", (location: string) => logs.push(location));
   bus.on("page_up_source-locator", (message: string) => {
     const command = JSON.parse(message) as {
       id: number;

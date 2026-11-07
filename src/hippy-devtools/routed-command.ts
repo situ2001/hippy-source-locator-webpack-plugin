@@ -1,5 +1,6 @@
-import path from "node:path";
 import type { CommandSender } from "./debug-server-adapter";
+
+import path from "node:path";
 
 interface Publisher {
   publish(message: unknown): unknown;

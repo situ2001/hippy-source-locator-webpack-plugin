@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import { createRoutedCommandSender } from "../src/hippy-devtools/routed-command";
 
 for (const failure of ["timeout", "subscribe", "publish"] as const) {
-  void test(`routed evaluation releases its connections after ${failure}`, async (t) => {
-    t.mock.timers.enable({ apis: ["setTimeout"] });
+  void test(`routed evaluation releases its connections after ${failure}`, async (context) => {
+    context.mock.timers.enable({ apis: ["setTimeout"] });
     const connections = new Set<PubSub>();
 
     class PubSub {
@@ -53,7 +54,7 @@ for (const failure of ["timeout", "subscribe", "publish"] as const) {
     // Allow subscription and publishing to complete before simulating a missing reply.
     await new Promise((resolve) => setImmediate(resolve));
     if (failure === "timeout") {
-      t.mock.timers.tick(5000);
+      context.mock.timers.tick(5000);
     }
     await rejected;
     assert.equal(connections.size, 0);

@@ -1,9 +1,9 @@
 import type { FiberNode, InspectorGlobal } from "../src/js-runtime/runtime";
-import test from "./helpers/test";
 
 import * as runtime from "../src/js-runtime/runtime";
+import test from "./helpers/test";
 
-test("injectToUiModule installs a serializable inspector", (t) => {
+test("injectToUiModule installs a serializable inspector", (context) => {
   function Demo(): void {}
 
   const rootFiber: FiberNode = {
@@ -29,7 +29,7 @@ test("injectToUiModule installs a serializable inspector", (t) => {
     target,
   );
 
-  t.deepEqual(target.__HIPPY_DEVTOOLS__?.inspectNode?.(7), {
+  context.deepEqual(target.__HIPPY_DEVTOOLS__?.inspectNode?.(7), {
     nodeId: 7,
     nativeName: "View",
     componentName: "Demo",
@@ -50,17 +50,17 @@ test("injectToUiModule installs a serializable inspector", (t) => {
       },
     ],
   });
-  t.is(target.__HIPPY_DEVTOOLS__?.inspectNode?.(8), null);
-  t.is(target.__HIPPY_DEVTOOLS__?.inspectNode?.("7"), null);
+  context.is(target.__HIPPY_DEVTOOLS__?.inspectNode?.(8), null);
+  context.is(target.__HIPPY_DEVTOOLS__?.inspectNode?.("7"), null);
 });
 
-test("injectToUiModule preserves other devtools adapters", (t) => {
+test("injectToUiModule preserves other devtools adapters", (context) => {
   const target: InspectorGlobal = {
     __HIPPY_DEVTOOLS__: { anotherInspector: true },
   };
 
   runtime.injectToUiModule({ getNodeById: () => null }, target);
 
-  t.true(target.__HIPPY_DEVTOOLS__?.anotherInspector);
-  t.is(typeof target.__HIPPY_DEVTOOLS__?.inspectNode, "function");
+  context.true(target.__HIPPY_DEVTOOLS__?.anotherInspector);
+  context.is(typeof target.__HIPPY_DEVTOOLS__?.inspectNode, "function");
 });

@@ -1,7 +1,9 @@
+import type SourceLocatorPlugin from "../src/index";
+import type { Compiler } from "webpack";
+
 import assert from "node:assert/strict";
 import path from "node:path";
-import type { Compiler } from "webpack";
-import type SourceLocatorPlugin from "../src/index";
+
 import test from "./helpers/test";
 
 const HippySourceLocatorWebpackPlugin = require("../dist/index.cjs") as typeof SourceLocatorPlugin;
@@ -59,18 +61,18 @@ function restoreNodeOptions(value: string | undefined): void {
   }
 }
 
-test("construction is side-effect free", (t) => {
+test("construction is side-effect free", (context) => {
   const oldNodeOptions = process.env.NODE_OPTIONS;
   process.env.NODE_OPTIONS = "--trace-warnings";
   try {
     new HippySourceLocatorWebpackPlugin();
-    t.is(process.env.NODE_OPTIONS, "--trace-warnings");
+    context.is(process.env.NODE_OPTIONS, "--trace-warnings");
   } finally {
     restoreNodeOptions(oldNodeOptions);
   }
 });
 
-test("failed activation leaves compiler options and process state unchanged", (t) => {
+test("failed activation leaves compiler options and process state unchanged", (context) => {
   const oldNodeOptions = process.env.NODE_OPTIONS;
   process.env.NODE_OPTIONS = "--trace-warnings";
   const compiler = createCompiler();
@@ -88,29 +90,29 @@ test("failed activation leaves compiler options and process state unchanged", (t
       /Cannot find module/,
     );
 
-    t.is(compiler.options.entry, originalEntry);
-    t.is(compiler.options.module.rules, originalRules);
-    t.is(compiler.options.resolve, originalResolve);
-    t.deepEqual(originalPlugins, []);
-    t.is(process.env.NODE_OPTIONS, "--trace-warnings");
+    context.is(compiler.options.entry, originalEntry);
+    context.is(compiler.options.module.rules, originalRules);
+    context.is(compiler.options.resolve, originalResolve);
+    context.deepEqual(originalPlugins, []);
+    context.is(process.env.NODE_OPTIONS, "--trace-warnings");
   } finally {
     restoreNodeOptions(oldNodeOptions);
   }
 });
 
-test("production activation is side-effect free", (t) => {
+test("production activation is side-effect free", (context) => {
   const oldNodeOptions = process.env.NODE_OPTIONS;
   process.env.NODE_OPTIONS = "--trace-warnings";
   const compiler = createCompiler("production");
   try {
     new HippySourceLocatorWebpackPlugin().apply(compiler as unknown as Compiler);
-    t.is(process.env.NODE_OPTIONS, "--trace-warnings");
+    context.is(process.env.NODE_OPTIONS, "--trace-warnings");
   } finally {
     restoreNodeOptions(oldNodeOptions);
   }
 });
 
-test("successful activation registers child preload once", (t) => {
+test("successful activation registers child preload once", (context) => {
   const oldNodeOptions = process.env.NODE_OPTIONS;
   process.env.NODE_OPTIONS = "--trace-warnings";
   const compiler = createCompiler();
@@ -121,13 +123,13 @@ test("successful activation registers child preload once", (t) => {
     plugin.apply(compiler as unknown as Compiler);
     plugin.apply(compiler as unknown as Compiler);
     const registrations = process.env.NODE_OPTIONS.match(/index\.cjs/g) ?? [];
-    t.is(registrations.length, 1);
+    context.is(registrations.length, 1);
   } finally {
     restoreNodeOptions(oldNodeOptions);
   }
 });
 
-test("unsupported entry leaves the complete configuration transaction unchanged", (t) => {
+test("unsupported entry leaves the complete configuration transaction unchanged", (context) => {
   const base = createCompiler();
   const compiler = { ...base, options: { ...base.options, entry: 42 } };
   const originalRules = compiler.options.module.rules;
@@ -143,13 +145,13 @@ test("unsupported entry leaves the complete configuration transaction unchanged"
     /unsupported Webpack entry/,
   );
 
-  t.is(compiler.options.entry, 42);
-  t.is(compiler.options.module.rules, originalRules);
-  t.is(compiler.options.resolve, originalResolve);
-  t.deepEqual(originalPlugins, []);
+  context.is(compiler.options.entry, 42);
+  context.is(compiler.options.module.rules, originalRules);
+  context.is(compiler.options.resolve, originalResolve);
+  context.deepEqual(originalPlugins, []);
 });
 
-test("configuration transaction supports Webpack rule variants", (t) => {
+test("configuration transaction supports Webpack rule variants", (context) => {
   const base = createCompiler();
   const rules = [
     { loader: "/virtual/node_modules/babel-loader/index.js", options: { plugins: [] } },
@@ -179,7 +181,7 @@ test("configuration transaction supports Webpack rule variants", (t) => {
     configuredRules[2].rules[0].use.options.plugins,
     configuredRules[3].oneOf[0].use[0].options.plugins,
   ];
-  t.true(
+  context.true(
     pluginLists.every(
       (plugins) =>
         plugins.length === 1 && /plugin-transform-react-jsx-source/.test(plugins[0] ?? ""),
@@ -187,7 +189,7 @@ test("configuration transaction supports Webpack rule variants", (t) => {
   );
 });
 
-test("configuration transaction supports Webpack entry variants", async (t) => {
+test("configuration transaction supports Webpack entry variants", async (context) => {
   const configureEntry = (entry: unknown): unknown => {
     const base = createCompiler();
     const compiler = { ...base, options: { ...base.options, entry } };
@@ -201,19 +203,19 @@ test("configuration transaction supports Webpack entry variants", async (t) => {
   const hasRuntimeFirst = (entry: unknown): boolean =>
     Array.isArray(entry) && String(entry[0]).endsWith("runtime-entry.cjs");
 
-  t.true(hasRuntimeFirst(configureEntry("./src/main.js")));
-  t.true(hasRuntimeFirst(configureEntry(["./src/main.js"])));
+  context.true(hasRuntimeFirst(configureEntry("./src/main.js")));
+  context.true(hasRuntimeFirst(configureEntry(["./src/main.js"])));
   const descriptor = configureEntry({ import: "./src/main.js" }) as { import: unknown };
-  t.true(hasRuntimeFirst(descriptor.import));
+  context.true(hasRuntimeFirst(descriptor.import));
   const entries = configureEntry({ app: "./src/main.js" }) as { app: unknown };
-  t.true(hasRuntimeFirst(entries.app));
+  context.true(hasRuntimeFirst(entries.app));
   const syncFactory = configureEntry(() => "./src/main.js") as () => unknown;
-  t.true(hasRuntimeFirst(syncFactory()));
+  context.true(hasRuntimeFirst(syncFactory()));
   const asyncFactory = configureEntry(async () => "./src/main.js") as () => Promise<unknown>;
-  t.true(hasRuntimeFirst(await asyncFactory()));
+  context.true(hasRuntimeFirst(await asyncFactory()));
 });
 
-test("plugin injects source transform, runtime entry, and resolved React module", (t) => {
+test("plugin injects source transform, runtime entry, and resolved React module", (context) => {
   const compiler = createCompiler();
   const originalBabelOptions = compiler.options.module.rules[0].oneOf[0].use[0].options;
   new HippySourceLocatorWebpackPlugin({
@@ -222,14 +224,16 @@ test("plugin injects source transform, runtime entry, and resolved React module"
   }).apply(compiler as unknown as Compiler);
 
   const babelOptions = compiler.options.module.rules[0].oneOf[0].use[0].options;
-  t.deepEqual(originalBabelOptions.plugins, []);
-  t.true(babelOptions.plugins.some((plugin) => /plugin-transform-react-jsx-source/.test(plugin)));
-  t.true(compiler.options.entry.index[0]?.endsWith("runtime-entry.cjs"));
+  context.deepEqual(originalBabelOptions.plugins, []);
+  context.true(
+    babelOptions.plugins.some((plugin) => /plugin-transform-react-jsx-source/.test(plugin)),
+  );
+  context.true(compiler.options.entry.index[0]?.endsWith("runtime-entry.cjs"));
   const reactAlias = compiler.options.resolve.alias.__HIPPY_SOURCE_LOCATOR_UI_MODULE__$;
-  t.is(reactAlias, path.resolve(__dirname, "fixtures/hippy-react.cjs"));
+  context.is(reactAlias, path.resolve(__dirname, "fixtures/hippy-react.cjs"));
 });
 
-test("plugin does not inject twice", (t) => {
+test("plugin does not inject twice", (context) => {
   const compiler = createCompiler();
   const plugin = new HippySourceLocatorWebpackPlugin({
     debugServer: false,
@@ -239,27 +243,33 @@ test("plugin does not inject twice", (t) => {
   plugin.apply(compiler as unknown as Compiler);
 
   const babelPlugins = compiler.options.module.rules[0].oneOf[0].use[0].options.plugins;
-  t.is(babelPlugins.filter((item) => /plugin-transform-react-jsx-source/.test(item)).length, 1);
-  t.is(compiler.options.entry.index.filter((item) => item.endsWith("runtime-entry.cjs")).length, 1);
+  context.is(
+    babelPlugins.filter((item) => /plugin-transform-react-jsx-source/.test(item)).length,
+    1,
+  );
+  context.is(
+    compiler.options.entry.index.filter((item) => item.endsWith("runtime-entry.cjs")).length,
+    1,
+  );
 });
 
-test("plugin is disabled in production", (t) => {
+test("plugin is disabled in production", (context) => {
   const compiler = createCompiler("production");
   new HippySourceLocatorWebpackPlugin({
     debugServer: false,
     reactModule: path.resolve(__dirname, "fixtures/hippy-react.cjs"),
   }).apply(compiler as unknown as Compiler);
 
-  t.deepEqual(compiler.options.entry, { index: ["./src/main.js"] });
-  t.deepEqual(compiler.options.module.rules[0].oneOf[0].use[0].options.plugins, []);
+  context.deepEqual(compiler.options.entry, { index: ["./src/main.js"] });
+  context.deepEqual(compiler.options.module.rules[0].oneOf[0].use[0].options.plugins, []);
 });
 
-test("debug-server integration can be disabled", (t) => {
+test("debug-server integration can be disabled", (context) => {
   const oldNodeOptions = process.env.NODE_OPTIONS;
   const compiler = createCompiler();
   new HippySourceLocatorWebpackPlugin({ debugServer: false }).apply(
     compiler as unknown as Compiler,
   );
 
-  t.is(process.env.NODE_OPTIONS, oldNodeOptions);
+  context.is(process.env.NODE_OPTIONS, oldNodeOptions);
 });

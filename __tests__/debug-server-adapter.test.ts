@@ -1,7 +1,9 @@
-import vm from "node:vm";
-import assert from "node:assert/strict";
-import * as debugServerAdapter from "../src/hippy-devtools/debug-server-adapter";
 import type { MiddlewareManager } from "../src/hippy-devtools/debug-server-adapter";
+
+import assert from "node:assert/strict";
+import vm from "node:vm";
+
+import * as debugServerAdapter from "../src/hippy-devtools/debug-server-adapter";
 import { createInspectorExpression } from "../src/hippy-devtools/inspector-expression";
 import test from "./helpers/test";
 
@@ -12,7 +14,7 @@ const {
   prependMiddleware,
 } = debugServerAdapter;
 
-test("selection middleware evaluates the injected page runtime after selection", async (t) => {
+test("selection middleware evaluates the injected page runtime after selection", async (context) => {
   const calls: Array<{ method: string; params: Record<string, unknown> }> = [];
   const middleware = createSelectionMiddleware();
   const response = { result: {} };
@@ -28,16 +30,16 @@ test("selection middleware evaluates the injected page runtime after selection",
     async () => response,
   );
 
-  t.is(result, response);
-  t.is(calls.length, 1);
+  context.is(result, response);
+  context.is(calls.length, 1);
   const [command] = calls;
   assert.ok(command);
-  t.is(command.method, "Runtime.evaluate");
-  t.true(command.params.returnByValue);
-  t.true((command.params.expression as string).endsWith("(42)"));
+  context.is(command.method, "Runtime.evaluate");
+  context.true(command.params.returnByValue);
+  context.true((command.params.expression as string).endsWith("(42)"));
 });
 
-test("selection middleware logs the evaluated source location in the debug-server process", async (t) => {
+test("selection middleware logs the evaluated source location in the debug-server process", async (context) => {
   const logs: string[] = [];
   const middleware = createSelectionMiddleware((location) => logs.push(location));
 
@@ -56,10 +58,12 @@ test("selection middleware logs the evaluated source location in the debug-serve
   );
   await Promise.resolve();
 
-  t.deepEqual(logs, ["[Hippy Source Locator] Example <View> — /project/src/Example.tsx:12:8"]);
+  context.deepEqual(logs, [
+    "[Hippy Source Locator] Example <View> — /project/src/Example.tsx:12:8",
+  ]);
 });
 
-test("selection middleware ignores commands without a numeric node id", async (t) => {
+test("selection middleware ignores commands without a numeric node id", async (context) => {
   let sendCount = 0;
   const middleware = createSelectionMiddleware();
 
@@ -73,10 +77,10 @@ test("selection middleware ignores commands without a numeric node id", async (t
     async () => undefined,
   );
 
-  t.is(sendCount, 0);
+  context.is(sendCount, 0);
 });
 
-test("selection middleware does not break selection when evaluate fails", async (t) => {
+test("selection middleware does not break selection when evaluate fails", async (context) => {
   const response = { result: {} };
   const middleware = createSelectionMiddleware();
   const result = await middleware(
@@ -89,10 +93,10 @@ test("selection middleware does not break selection when evaluate fails", async 
     async () => response,
   );
 
-  t.is(result, response);
+  context.is(result, response);
 });
 
-test("prependMiddleware preserves existing middleware and installs once", (t) => {
+test("prependMiddleware preserves existing middleware and installs once", (context) => {
   const existing = (): undefined => undefined;
 
   const injected = (): undefined => undefined;
@@ -103,12 +107,12 @@ test("prependMiddleware preserves existing middleware and installs once", (t) =>
     },
   };
 
-  t.true(prependMiddleware(manager, INSPECTED_NODE_METHOD, injected));
-  t.deepEqual(manager.upwardMiddleWareListMap[INSPECTED_NODE_METHOD], [injected, existing]);
-  t.false(prependMiddleware(manager, INSPECTED_NODE_METHOD, injected));
+  context.true(prependMiddleware(manager, INSPECTED_NODE_METHOD, injected));
+  context.deepEqual(manager.upwardMiddleWareListMap[INSPECTED_NODE_METHOD], [injected, existing]);
+  context.false(prependMiddleware(manager, INSPECTED_NODE_METHOD, injected));
 });
 
-test("installDebugServerMiddleware supports a loaded debug-server adapter", (t) => {
+test("installDebugServerMiddleware supports a loaded debug-server adapter", (context) => {
   const androidMiddleWareManager: MiddlewareManager = { upwardMiddleWareListMap: {} };
   const iOSMiddleWareManager: MiddlewareManager = { upwardMiddleWareListMap: {} };
   const entry = "/virtual/debug-server/dist/index.js";
@@ -131,21 +135,27 @@ test("installDebugServerMiddleware supports a loaded debug-server adapter", (t) 
     },
   });
 
-  t.deepEqual(result, {
+  context.deepEqual(result, {
     installed: true,
     packageName: "@hippy/debug-server-next",
   });
-  t.is(typeof androidMiddleWareManager.upwardMiddleWareListMap[INSPECTED_NODE_METHOD], "function");
-  t.is(typeof iOSMiddleWareManager.upwardMiddleWareListMap[INSPECTED_NODE_METHOD], "function");
+  context.is(
+    typeof androidMiddleWareManager.upwardMiddleWareListMap[INSPECTED_NODE_METHOD],
+    "function",
+  );
+  context.is(
+    typeof iOSMiddleWareManager.upwardMiddleWareListMap[INSPECTED_NODE_METHOD],
+    "function",
+  );
 });
 
-test("inspector expression serializes the node id", (t) => {
+test("inspector expression serializes the node id", (context) => {
   const expression = createInspectorExpression(7);
-  t.true(expression.includes("__HIPPY_DEVTOOLS__"));
-  t.true(expression.endsWith("(7)"));
+  context.true(expression.includes("__HIPPY_DEVTOOLS__"));
+  context.true(expression.endsWith("(7)"));
 });
 
-test("inspector expression returns the component and source location", (t) => {
+test("inspector expression returns the component and source location", (context) => {
   const inspectedNode = {
     nodeId: 7,
     nativeName: "View",
@@ -157,10 +167,10 @@ test("inspector expression returns the component and source location", (t) => {
     global: { __HIPPY_DEVTOOLS__: { inspectNode: () => inspectedNode } },
   });
 
-  t.is(result, "Example <View> — /project/src/Example.tsx:12:8");
+  context.is(result, "Example <View> — /project/src/Example.tsx:12:8");
 });
 
-test("inspector expression identifies a component without source metadata", (t) => {
+test("inspector expression identifies a component without source metadata", (context) => {
   const result: unknown = vm.runInNewContext(createInspectorExpression(7), {
     global: {
       __HIPPY_DEVTOOLS__: {
@@ -169,5 +179,5 @@ test("inspector expression identifies a component without source metadata", (t) 
     },
   });
 
-  t.is(result, "Example <View> — source unavailable");
+  context.is(result, "Example <View> — source unavailable");
 });
