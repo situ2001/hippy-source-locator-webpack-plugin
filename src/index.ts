@@ -1,8 +1,7 @@
-import { activateDebugServerPreload } from './hippy-devtools/preload';
-import type { Compiler } from 'webpack';
-import {
-  activateSourceLocator,
-} from './webpack/activation';
+import type { Compiler } from "webpack";
+
+import { activateDebugServerPreload } from "./hippy-devtools/preload";
+import { activateSourceLocator } from "./webpack/activation";
 
 export interface DebugServerAdapter {
   packageName: string;
@@ -28,4 +27,6 @@ export default class HippySourceLocatorWebpackPlugin {
   }
 }
 
-if (!require.main) activateDebugServerPreload();
+if (!require.main) {
+  activateDebugServerPreload();
+}

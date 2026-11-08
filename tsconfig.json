@@ -12,5 +12,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "__tests__/**/*.ts", "rolldown.config.ts"]
+  "include": ["src/**/*.ts", "__tests__/**/*.ts", "*.config.ts", "*.config.mts"]
 }

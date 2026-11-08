@@ -1,6 +1,6 @@
 interface InspectedNode {
-  componentName?: string;
-  nativeName?: string;
+  componentName?: string | null;
+  nativeName?: string | null;
   source?: {
     fileName: string;
     lineNumber: number;
@@ -19,21 +19,37 @@ interface InspectorGlobal {
  * @returns String of node label and location
  */
 export function inspectNode(nodeId: number): string | null {
-  const api = typeof global !== 'undefined'
-    && (global as typeof global & InspectorGlobal).__HIPPY_DEVTOOLS__;
-  if (!api || typeof api.inspectNode !== 'function') return null;
+  const api =
+    typeof global !== "undefined"
+      ? (global as typeof global & InspectorGlobal).__HIPPY_DEVTOOLS__
+      : undefined;
+  if (!api || typeof api.inspectNode !== "function") {
+    return null;
+  }
 
   const data = api.inspectNode(nodeId);
-  if (!data) return null;
+  if (!data) {
+    return null;
+  }
 
-  let label = data.componentName || data.nativeName || 'Unknown component';
-  if (data.nativeName && data.nativeName !== label) label += ` <${data.nativeName}>`;
+  const componentName = data.componentName ?? "";
+  const nativeName = data.nativeName ?? "";
+  let label = componentName !== "" ? componentName : nativeName;
+  if (label === "") {
+    label = "Unknown component";
+  }
+  if (nativeName !== "" && nativeName !== label) {
+    label += ` <${nativeName}>`;
+  }
 
   const source = data.source;
-  if (!source) return `${label} — source unavailable`;
+  if (!source) {
+    return `${label} — source unavailable`;
+  }
 
   let location = `${source.fileName}:${source.lineNumber}`;
-  if (typeof source.columnNumber === 'number') location += `:${source.columnNumber}`;
+  if (typeof source.columnNumber === "number") {
+    location += `:${source.columnNumber}`;
+  }
   return `${label} — ${location}`;
 }
-

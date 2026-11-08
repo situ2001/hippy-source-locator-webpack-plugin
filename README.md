@@ -9,13 +9,11 @@ pnpm add -D hippy-source-locator-webpack-plugin
 ```
 
 ```js
-const HippySourceLocatorWebpackPlugin = require('hippy-source-locator-webpack-plugin');
+const HippySourceLocatorWebpackPlugin = require("hippy-source-locator-webpack-plugin");
 
 module.exports = {
-  mode: 'development',
-  plugins: [
-    new HippySourceLocatorWebpackPlugin(),
-  ],
+  mode: "development",
+  plugins: [new HippySourceLocatorWebpackPlugin()],
 };
 ```
 
@@ -29,23 +27,23 @@ process.
 
 ## Options
 
-| Option | Default | Description |
-| --- | --- | --- |
-| `enabled` | Development and `none` modes | Controls plugin activation. |
-| `reactModule` | `@hippy/react` or its configured alias | Selects a custom Hippy React entry. |
-| `debugServer` | `true` | Enables selected-node forwarding. |
-| `hippyDebugServer` | `@hippy/debug-server-next` | Configures one or more custom debug-server adapters. |
+| Option             | Default                                | Description                                          |
+| ------------------ | -------------------------------------- | ---------------------------------------------------- |
+| `enabled`          | Development and `none` modes           | Controls plugin activation.                          |
+| `reactModule`      | `@hippy/react` or its configured alias | Selects a custom Hippy React entry.                  |
+| `debugServer`      | `true`                                 | Enables selected-node forwarding.                    |
+| `hippyDebugServer` | `@hippy/debug-server-next`             | Configures one or more custom debug-server adapters. |
 
 Example:
 
 ```js
 new HippySourceLocatorWebpackPlugin({
   enabled: true,
-  reactModule: require.resolve('@hippy/react'),
+  reactModule: require.resolve("@hippy/react"),
   debugServer: true,
   hippyDebugServer: {
-    packageName: 'your-debug-server-package',
-    middlewareRoot: 'path/to/middlewares',
+    packageName: "your-debug-server-package",
+    middlewareRoot: "path/to/middlewares",
   },
 });
 ```
@@ -59,6 +57,8 @@ after plugin activation so they inherit its preload configuration.
 
 ## Development
 
+Node.js: `^22.18.0 || >=24.0.0`.
+
 `src/index.ts` is the public plugin entry. Implementation code is grouped by execution environment:
 
 - `src/js-runtime/`: code running in the Hippy app, including runtime injection,
@@ -69,12 +69,9 @@ after plugin activation so they inherit its preload configuration.
 
 ```sh
 pnpm install
+pnpm lint
+pnpm format:check
 pnpm typecheck
 pnpm build
 pnpm test
 ```
-
-## Releasing
-
-Run `pnpm changeset` for each user-visible change, `pnpm version-packages` to prepare
-the version and changelog, then `pnpm release` to publish.
