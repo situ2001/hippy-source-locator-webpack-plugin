@@ -57,7 +57,7 @@ after plugin activation so they inherit its preload configuration.
 
 ## Development
 
-Use Node.js 22.18+ within the 22.x series, or Node.js 24+, for the lint and format tools.
+Node.js: `^22.18.0 || >=24.0.0`.
 
 `src/index.ts` is the public plugin entry. Implementation code is grouped by execution environment:
 
@@ -75,14 +75,3 @@ pnpm typecheck
 pnpm build
 pnpm test
 ```
-
-Run `pnpm lint:fix` to apply automatic lint fixes and `pnpm format` to format files.
-The shared presets come from `@situ2001/code-standards`. Update them with
-`pnpm add -D --save-exact @situ2001/code-standards@latest`.
-
-## Releasing
-
-Run `pnpm changeset` for each user-visible change and commit the generated file with
-the change. CI builds and tests each PR update, including the Webpack 4/5 compiler checks.
-After a merge to `main`, Changesets creates or updates a Release PR with the version
-and changelog. Merge that PR to publish the package to npm.
